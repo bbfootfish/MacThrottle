@@ -10,10 +10,15 @@ final class ThermalMonitor {
 
     // MARK: - CPU 温度阈值
     // 本地修改：除系统热压等级外，额外按 CPU 温度（M5 上为 11 个 CPU SMC 键的平均值）判定热压等级。
-    /// 预警阈值：CPU 温度达到该值即按「重度热压」处理
+    // 采用滞回，避免温度在阈值附近抖动时状态来回跳变。
+    /// 预警阈值：CPU 温度达到该值即进入「重度热压」
     static let warningTemperatureThreshold: Double = 90
-    /// 严重阈值：CPU 温度达到该值即按「临界热压」处理
+    /// 预警解除阈值：已进入重度后，温度降回该值以下才退出
+    static let warningReleaseTemperatureThreshold: Double = 88
+    /// 严重阈值：CPU 温度达到该值即进入「临界热压」
     static let criticalTemperatureThreshold: Double = 97
+    /// 严重解除阈值：已进入临界后，温度降回该值以下才退出
+    static let criticalReleaseTemperatureThreshold: Double = 95
 
     // MARK: - State
     private(set) var pressure: ThermalPressure = .unknown
@@ -24,6 +29,8 @@ final class ThermalMonitor {
     private(set) var history: [HistoryEntry] = []
     private var timer: Timer?
     private var previousPressure: ThermalPressure = .unknown
+    /// 温度判定等级（带滞回），与系统热压等级解耦
+    private var temperaturePressure: ThermalPressure = .nominal
 
     // Notification settings
     var notifyOnHeavy: Bool = UserDefaults.standard.object(forKey: "notifyOnHeavy") as? Bool ?? true {
@@ -99,19 +106,39 @@ final class ThermalMonitor {
         }
     }
 
-    /// 合并系统热压等级与 CPU 温度阈值，取两者中更严重的结果
-    static func resolvedPressure(systemPressure: ThermalPressure, temperature: Double?) -> ThermalPressure {
-        guard let temperature else { return systemPressure }
+    /// 按滞回规则推算「温度判定等级」：升级立即生效，降级需跌破解除阈值
+    static func nextTemperaturePressure(previous: ThermalPressure, temperature: Double?) -> ThermalPressure {
+        guard let temperature else { return previous }
 
-        if temperature >= criticalTemperatureThreshold {
-            return .critical
+        switch previous {
+        case .critical:
+            if temperature >= criticalReleaseTemperatureThreshold { return .critical }
+            if temperature >= warningReleaseTemperatureThreshold { return .heavy }
+            return .nominal
+        case .heavy:
+            if temperature >= criticalTemperatureThreshold { return .critical }
+            if temperature >= warningReleaseTemperatureThreshold { return .heavy }
+            return .nominal
+        default:
+            if temperature >= criticalTemperatureThreshold { return .critical }
+            if temperature >= warningTemperatureThreshold { return .heavy }
+            return .nominal
         }
+    }
 
-        if temperature >= warningTemperatureThreshold {
-            return systemPressure == .critical ? .critical : .heavy
+    /// 取系统热压等级与温度判定等级中更严重者
+    static func resolvedPressure(systemPressure: ThermalPressure, temperaturePressure: ThermalPressure) -> ThermalPressure {
+        severity(of: temperaturePressure) > severity(of: systemPressure) ? temperaturePressure : systemPressure
+    }
+
+    private static func severity(of pressure: ThermalPressure) -> Int {
+        switch pressure {
+        case .critical: return 3
+        case .heavy: return 2
+        case .moderate: return 1
+        case .nominal: return 0
+        case .unknown: return -1
         }
-
-        return systemPressure
     }
 
     /// 读取 CPU 温度（SMC 优先，HID 兜底）
@@ -131,9 +158,10 @@ final class ThermalMonitor {
     private func updateThermalState() {
         // 先读取温度，使其可参与热压等级判定
         readTemperature()
+        temperaturePressure = Self.nextTemperaturePressure(previous: temperaturePressure, temperature: temperature)
 
         let systemPressure = ThermalPressureReader.shared.readPressure() ?? .unknown
-        let newPressure = Self.resolvedPressure(systemPressure: systemPressure, temperature: temperature)
+        let newPressure = Self.resolvedPressure(systemPressure: systemPressure, temperaturePressure: temperaturePressure)
 
         if newPressure != previousPressure {
             // Check for throttling notifications

@@ -35,15 +35,13 @@
 问题：上游报警只依据系统热压等级（`ProcessInfo.thermalState`）。该系统值在本机长期停在 nominal/moderate，即使 CPU 已到 85 °C 以上也不报警。
 
 修改：
-- 新增两个阈值常量：预警 `warningTemperatureThreshold = 90 °C`、严重 `criticalTemperatureThreshold = 97 °C`。
-- 新增 `resolvedPressure(systemPressure:temperature:)`：把系统热压等级与温度阈值判定合并，取更严重者——
-  - 温度 ≥ 97 °C → `critical`
-  - 温度 ≥ 90 °C → `heavy`（若系统已是 `critical` 则保持 `critical`）
-  - 否则沿用系统热压等级
+- 新增四个阈值常量：预警 `warningTemperatureThreshold = 90 °C`、预警解除 `warningReleaseTemperatureThreshold = 88 °C`、严重 `criticalTemperatureThreshold = 97 °C`、严重解除 `criticalReleaseTemperatureThreshold = 95 °C`。
+- 新增 `nextTemperaturePressure(previous:temperature:)`：维护「温度判定等级」，升级立即生效、降级必须跌破解除阈值（滞回），避免温度在阈值附近抖动时状态来回跳。
+- 新增 `resolvedPressure(systemPressure:temperaturePressure:)`：取系统热压等级与温度判定等级中更严重者。
 - 采样顺序调整为「先读温度、再算热压」，避免同一轮读到上一轮的旧温度。
 - 温度读取抽成 `readTemperature()`，SMC 优先、HID 兜底，行为不变。
 
-阈值理由：本机空闲 79–81 °C，满载峰值 87 °C。若按 95 °C 起报，日常使用中几乎永不触发；取 90 °C 预警、97 °C 严重，可在接近峰值时给出提示，同时保留 97 °C 作为接近硬降频的强提醒线。
+阈值理由：本机空闲 79–81 °C，满载峰值 87–100 °C，且无风扇机型温度随负载波动可达 ±5 °C。取 90 °C 预警、97 °C 严重，配合 2 °C 回差，既能给出提前提示，又不会在阈值附近反复跳变。系统热压等级与芯片温度本质不同步（前者随负载立即升降，后者受热惯性滞后），因此两者取更严重者，而不是互相替代。
 
 ### 3. 界面文本中文化
 
