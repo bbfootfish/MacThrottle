@@ -25,7 +25,7 @@ struct MacThrottleApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("About MacThrottle", id: "about") {
+        Window("关于 MacThrottle", id: "about") {
             AboutView()
         }
         .windowResizability(.contentSize)

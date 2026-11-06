@@ -19,13 +19,13 @@ private enum UpdateError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidReleaseURL:
-            return "The update check URL is invalid."
+            return "更新检查地址无效。"
         case .invalidResponse:
-            return "GitHub returned an invalid response."
+            return "GitHub 返回了无效响应。"
         case .requestFailed(let statusCode):
-            return "GitHub returned HTTP \(statusCode)."
+            return "GitHub 返回 HTTP \(statusCode)。"
         case .missingVersion:
-            return "The latest release did not include a version."
+            return "最新发布未包含版本号。"
         }
     }
 }

@@ -10,11 +10,11 @@ enum ThermalPressure: String, Codable {
 
     var displayName: String {
         switch self {
-        case .nominal: return "Nominal"
-        case .moderate: return "Moderate"
-        case .heavy: return "Heavy"
-        case .critical: return "Critical"
-        case .unknown: return "Unknown"
+        case .nominal: return "正常"
+        case .moderate: return "中度"
+        case .heavy: return "重度"
+        case .critical: return "临界"
+        case .unknown: return "未知"
         }
     }
 

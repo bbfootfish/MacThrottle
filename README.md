@@ -1,5 +1,12 @@
 # MacThrottle
 
+> **这是个人 fork，非上游官方版本**
+>
+> - 上游项目：[angristan/MacThrottle](https://github.com/angristan/MacThrottle)，作者 **angristan**，MIT License
+> - 本 fork 相对上游的修改：M5 CPU 温度口径修正（11 键平均）、新增 CPU 温度阈值判定（预警 90 °C / 严重 97 °C）、界面中文化
+> - 逐项说明与修改原因见 [FORK-CHANGES.md](FORK-CHANGES.md)。除上述改动外代码均来自上游，本仓库不获上游维护者背书。
+
+
 [![GitHub Release](https://img.shields.io/github/v/release/angristan/MacThrottle)](https://github.com/angristan/MacThrottle/releases)
 [![CI](https://github.com/angristan/MacThrottle/actions/workflows/ci.yml/badge.svg)](https://github.com/angristan/MacThrottle/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

@@ -63,10 +63,11 @@ final class SMCReader {
 
     // CPU/GPU temperature keys by chip generation
     // Source: https://github.com/exelban/stats/blob/a791a6c6a3840bcbe117690b8d3cff92179fc4aa/Modules/Sensors/values.swift#L329
+    // NOTE: only CPU core keys are listed here. GPU keys (Tg##/Tf1x/Tf2x) are intentionally
+    // excluded so that the reported CPU temperature is a pure average of CPU core sensors.
     private let m1Keys = [
         "Tp09", "Tp0T",  // Efficiency CPU cores
-        "Tp01", "Tp05", "Tp0D", "Tp0H", "Tp0L", "Tp0P", "Tp0X", "Tp0b",  // Performance CPU cores
-        "Tg05", "Tg0D", "Tg0L", "Tg0T"  // GPU
+        "Tp01", "Tp05", "Tp0D", "Tp0H", "Tp0L", "Tp0P", "Tp0X", "Tp0b"  // Performance CPU cores
     ]
     // M1/M2 Pro/Max/Ultra use TC## keys for CPU cores instead of Tp##
     // Source: https://github.com/exelban/stats/issues/700
@@ -76,25 +77,28 @@ final class SMCReader {
         "TC20", "TC21", "TC22", "TC23",
         "TC30", "TC31", "TC32", "TC33",
         "TC40", "TC41", "TC42", "TC43",
-        "TC50", "TC51", "TC52", "TC53",
-        // GPU
-        "Tg04", "Tg05", "Tg0C", "Tg0D", "Tg0K", "Tg0L", "Tg0S", "Tg0T"
+        "TC50", "TC51", "TC52", "TC53"
     ]
     private let m2Keys = [
         "Tp1h", "Tp1t", "Tp1p", "Tp1l",  // Efficiency CPU cores
-        "Tp01", "Tp05", "Tp09", "Tp0D", "Tp0X", "Tp0b", "Tp0f", "Tp0j",  // Performance CPU cores
-        "Tg0f", "Tg0j"  // GPU
+        "Tp01", "Tp05", "Tp09", "Tp0D", "Tp0X", "Tp0b", "Tp0f", "Tp0j"  // Performance CPU cores
     ]
     private let m3Keys = [
         "Te05", "Te0L", "Te0P", "Te0S",  // Efficiency CPU cores
         "Tf04", "Tf09", "Tf0A", "Tf0B", "Tf0D", "Tf0E",
-        "Tf44", "Tf49", "Tf4A", "Tf4B", "Tf4D", "Tf4E",  // Performance CPU cores
-        "Tf14", "Tf18", "Tf19", "Tf1A", "Tf24", "Tf28", "Tf29", "Tf2A"  // GPU
+        "Tf44", "Tf49", "Tf4A", "Tf4B", "Tf4D", "Tf4E"  // Performance CPU cores
     ]
     private let m4Keys = [
         "Te05", "Te0S", "Te09", "Te0H",  // Efficiency CPU cores
-        "Tp01", "Tp05", "Tp09", "Tp0D", "Tp0V", "Tp0Y", "Tp0b", "Tp0e",  // Performance CPU cores
-        "Tg0G", "Tg0H", "Tg1U", "Tg1k", "Tg0K", "Tg0L", "Tg0d", "Tg0e", "Tg0j", "Tg0k"  // GPU
+        "Tp01", "Tp05", "Tp09", "Tp0D", "Tp0V", "Tp0Y", "Tp0b", "Tp0e"  // Performance CPU cores
+    ]
+    // M5 keys verified on MacBook Air (Mac17,3, Apple M5, macOS 26.6.2) by scanning all SMC
+    // temperature keys under load/cool-down: these 11 keys are the only CPU core sensors that
+    // return valid values on M5. Semantics cross-checked against Stats' m5Gen sensor table
+    // (super core 1-4 / performance core 1-8). Tp08/Tp0K/Tp0U/Tp0d/Tp0g/Tp0j/Tp0m return nothing.
+    private let m5Keys = [
+        "Tp00", "Tp04", "Tp0C", "Tp0G",  // Super CPU cores
+        "Tp0O", "Tp0R", "Tp0X", "Tp0a", "Tp0p", "Tp0u", "Tp0y"  // Performance CPU cores
     ]
 
     // Cached fan count (0 = not yet read, -1 = no fans)
@@ -104,7 +108,7 @@ final class SMCReader {
 
     private var allTemperatureKeys: [String] {
         var seenKeys = Set<String>()
-        return (m1Keys + mProMaxKeys + m2Keys + m3Keys + m4Keys).filter { seenKeys.insert($0).inserted }
+        return (m1Keys + mProMaxKeys + m2Keys + m3Keys + m4Keys + m5Keys).filter { seenKeys.insert($0).inserted }
     }
 
     private init() {
@@ -216,22 +220,33 @@ final class SMCReader {
     }
 
     private func readTemperatureReading(from keys: [String]) -> (reading: TemperatureReading?, validKeys: [String]) {
-        var maxTemp: Double = 0
-        var maxKey: String = ""
+        var sum: Double = 0
+        var count = 0
+        var hottestTemp: Double = 0
+        var hottestKey = ""
         var validKeys: [String] = []
 
         for key in keys {
             guard let temp = readTemperature(key: key) else { continue }
 
             validKeys.append(key)
-            if temp > maxTemp {
-                maxTemp = temp
-                maxKey = key
+            sum += temp
+            count += 1
+
+            if temp > hottestTemp {
+                hottestTemp = temp
+                hottestKey = key
             }
         }
 
-        let reading = maxTemp > 0 ? TemperatureReading(value: maxTemp, source: "\(maxKey) (SMC)") : nil
-        return (reading, validKeys)
+        guard count > 0 else { return (nil, validKeys) }
+
+        let average = sum / Double(count)
+        let source = count > 1
+            ? String(format: "SMC 平均 %d 键（最高 %@ %.1f）", count, hottestKey, hottestTemp)
+            : "\(hottestKey) (SMC)"
+
+        return (TemperatureReading(value: average, source: source), validKeys)
     }
 
     private func readUInt8(key: String) -> UInt8? {

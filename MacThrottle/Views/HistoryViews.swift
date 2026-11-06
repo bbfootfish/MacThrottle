@@ -102,7 +102,7 @@ struct HistoryGraphView: View {
             HStack {
                 Text(formatTimeAgo(historyDuration))
                 Spacer()
-                Text("now")
+                Text("现在")
             }
             .font(.system(size: 9))
             .foregroundStyle(.secondary)
@@ -275,8 +275,8 @@ struct HistoryGraphView: View {
             let entry = result.entry
             if let temp = entry.temperature {
                 let timeAgo = Int(Date().timeIntervalSince(entry.timestamp))
-                let timeStr = timeAgo < 60 ? "\(timeAgo)s ago" : "\(timeAgo / 60)m ago"
-                let fanStr = showFanSpeed ? entry.fanSpeed.map { " • Fan \(Int($0))%" } ?? "" : ""
+                let timeStr = timeAgo < 60 ? "\(timeAgo) 秒前" : "\(timeAgo / 60) 分钟前"
+                let fanStr = showFanSpeed ? entry.fanSpeed.map { " • 风扇 \(Int($0))%" } ?? "" : ""
                 if #available(macOS 26.0, *) {
                     Text("\(Int(temp))° • \(entry.pressure.displayName)\(fanStr) • \(timeStr)")
                         .font(.system(size: 8, weight: .medium))
@@ -299,14 +299,14 @@ struct HistoryGraphView: View {
     private func formatTimeAgo(_ interval: TimeInterval) -> String {
         let minutes = Int(interval) / 60
         if minutes < 60 {
-            return "\(minutes)m ago"
+            return "\(minutes) 分钟前"
         } else {
             let hours = minutes / 60
             let mins = minutes % 60
             if mins == 0 {
-                return "\(hours)h ago"
+                return "\(hours) 小时前"
             }
-            return "\(hours)h \(mins)m ago"
+            return "\(hours) 小时 \(mins) 分钟前"
         }
     }
 }
@@ -328,7 +328,7 @@ struct TimeBreakdownView: View {
                     HStack(spacing: 2) {
                         Text(pressure.displayName)
                         if pressure.isThrottling {
-                            Text("(throttling)")
+                            Text("（降频中）")
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -354,11 +354,11 @@ struct TimeBreakdownView: View {
         let seconds = totalSeconds % 60
 
         if hours > 0 {
-            return String(format: "%dh %dm", hours, minutes)
+            return String(format: "%d 小时 %d 分", hours, minutes)
         } else if minutes > 0 {
-            return String(format: "%dm %ds", minutes, seconds)
+            return String(format: "%d 分 %d 秒", minutes, seconds)
         } else {
-            return String(format: "%ds", seconds)
+            return String(format: "%d 秒", seconds)
         }
     }
 }

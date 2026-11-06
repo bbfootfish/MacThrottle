@@ -16,7 +16,7 @@ struct MenuContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Thermal Pressure:")
+                Text("热压状态：")
                 Text(monitor.pressure.displayName)
                     .foregroundColor(monitor.pressure.color)
                     .fontWeight(.semibold)
@@ -25,7 +25,7 @@ struct MenuContentView: View {
                     Text("\(Int(temp.rounded()))°C")
                         .foregroundColor(colorForTemperature(temp))
                         .fontWeight(.semibold)
-                        .help("Source: \(monitor.temperatureSource ?? "Unknown")")
+                        .help("来源：\(monitor.temperatureSource ?? "未知")")
                 }
             }
             .font(.headline)
@@ -36,7 +36,7 @@ struct MenuContentView: View {
 
             if !monitor.timeInEachState.isEmpty {
                 Divider()
-                Text("Statistics")
+                Text("统计")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 TimeBreakdownView(
@@ -47,49 +47,49 @@ struct MenuContentView: View {
 
             Divider()
 
-            Text("Settings")
+            Text("设置")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Toggle("Launch at Login", isOn: Binding(
+            Toggle("登录时启动", isOn: Binding(
                 get: { LaunchAtLoginManager.shared.isEnabled },
                 set: { _ in LaunchAtLoginManager.shared.toggle() }
             ))
             .controlSize(.small)
 
             if monitor.hasFans {
-                Toggle("Show Fan Speed", isOn: $monitor.showFanSpeed)
+                Toggle("显示风扇转速", isOn: $monitor.showFanSpeed)
                     .controlSize(.small)
             }
 
-            Toggle("Show Temperature in Menu Bar", isOn: $monitor.showTemperatureInMenuBar)
+            Toggle("在菜单栏显示温度", isOn: $monitor.showTemperatureInMenuBar)
                 .controlSize(.small)
 
             Divider()
 
-            Text("Notifications")
+            Text("通知")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Group {
-                Toggle("On Heavy", isOn: $monitor.notifyOnHeavy)
-                Toggle("On Critical", isOn: $monitor.notifyOnCritical)
-                Toggle("On Recovery", isOn: $monitor.notifyOnRecovery)
-                Toggle("Sound", isOn: $monitor.notificationSound)
+                Toggle("重度热压时提醒", isOn: $monitor.notifyOnHeavy)
+                Toggle("临界热压时提醒", isOn: $monitor.notifyOnCritical)
+                Toggle("恢复时提醒", isOn: $monitor.notifyOnRecovery)
+                Toggle("提示音", isOn: $monitor.notificationSound)
             }
             .controlSize(.small)
 
             Divider()
 
             HStack {
-                Button("About") {
+                Button("关于") {
                     openAboutWindow()
                 }
                 .controlSize(.small)
 
                 Spacer()
 
-                Button("Quit") {
+                Button("退出") {
                     NSApplication.shared.terminate(nil)
                 }
                 .keyboardShortcut("q")

@@ -8,6 +8,13 @@ final class ThermalMonitor {
     private static let historyDurationSeconds: TimeInterval = 600  // 10 minutes
     private static let pollIntervalSeconds: TimeInterval = 2.0
 
+    // MARK: - CPU 温度阈值
+    // 本地修改：除系统热压等级外，额外按 CPU 温度（M5 上为 11 个 CPU SMC 键的平均值）判定热压等级。
+    /// 预警阈值：CPU 温度达到该值即按「重度热压」处理
+    static let warningTemperatureThreshold: Double = 90
+    /// 严重阈值：CPU 温度达到该值即按「临界热压」处理
+    static let criticalTemperatureThreshold: Double = 97
+
     // MARK: - State
     private(set) var pressure: ThermalPressure = .unknown
     private(set) var temperature: Double?
@@ -92,8 +99,41 @@ final class ThermalMonitor {
         }
     }
 
+    /// 合并系统热压等级与 CPU 温度阈值，取两者中更严重的结果
+    static func resolvedPressure(systemPressure: ThermalPressure, temperature: Double?) -> ThermalPressure {
+        guard let temperature else { return systemPressure }
+
+        if temperature >= criticalTemperatureThreshold {
+            return .critical
+        }
+
+        if temperature >= warningTemperatureThreshold {
+            return systemPressure == .critical ? .critical : .heavy
+        }
+
+        return systemPressure
+    }
+
+    /// 读取 CPU 温度（SMC 优先，HID 兜底）
+    private func readTemperature() {
+        if let smcReading = SMCReader.shared.readCPUTemperature() {
+            temperature = smcReading.value
+            temperatureSource = smcReading.source
+        } else if let hidReading = HIDTemperatureReader.shared.readCPUTemperature() {
+            temperature = hidReading.value
+            temperatureSource = hidReading.source
+        } else {
+            temperature = nil
+            temperatureSource = nil
+        }
+    }
+
     private func updateThermalState() {
-        let newPressure = ThermalPressureReader.shared.readPressure() ?? .unknown
+        // 先读取温度，使其可参与热压等级判定
+        readTemperature()
+
+        let systemPressure = ThermalPressureReader.shared.readPressure() ?? .unknown
+        let newPressure = Self.resolvedPressure(systemPressure: systemPressure, temperature: temperature)
 
         if newPressure != previousPressure {
             // Check for throttling notifications
@@ -111,18 +151,6 @@ final class ThermalMonitor {
         }
 
         pressure = newPressure
-
-        // Read CPU temperature (SMC primary, HID fallback)
-        if let smcReading = SMCReader.shared.readCPUTemperature() {
-            temperature = smcReading.value
-            temperatureSource = smcReading.source
-        } else if let hidReading = HIDTemperatureReader.shared.readCPUTemperature() {
-            temperature = hidReading.value
-            temperatureSource = hidReading.source
-        } else {
-            temperature = nil
-            temperatureSource = nil
-        }
 
         // Read fan speed
         if let fan = SMCReader.shared.readFanSpeed() {
@@ -161,10 +189,10 @@ final class ThermalMonitor {
 
     private func sendThrottleNotification(pressure: ThermalPressure) {
         let content = UNMutableNotificationContent()
-        content.title = "Thermal Throttling"
+        content.title = "热压降频"
         content.body = pressure == .critical
-            ? "Your Mac is severely throttled!"
-            : "Your Mac is being throttled (Heavy pressure)"
+            ? "Mac 正处于严重降频状态！"
+            : "Mac 正在降频（重度热压）"
         if notificationSound {
             content.sound = .default
         }
@@ -180,8 +208,8 @@ final class ThermalMonitor {
 
     private func sendRecoveryNotification() {
         let content = UNMutableNotificationContent()
-        content.title = "Thermal Pressure Recovered"
-        content.body = "Your Mac is no longer being throttled"
+        content.title = "热压已恢复"
+        content.body = "Mac 已不再降频"
         if notificationSound {
             content.sound = .default
         }

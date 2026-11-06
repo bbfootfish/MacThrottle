@@ -22,11 +22,11 @@ struct AboutView: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
+            Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            Text("Monitor your Mac's thermal pressure\nand get notified when throttling occurs.")
+            Text("监控 Mac 的热压状态\n在发生降频时收到通知。")
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -35,11 +35,11 @@ struct AboutView: View {
 
             if let url = URL(string: "https://github.com/angristan/MacThrottle") {
                 if #available(macOS 26.0, *) {
-                    Link("View on GitHub", destination: url)
+                    Link("在 GitHub 上查看", destination: url)
                         .font(.caption)
                         .glassEffect()
                 } else {
-                    Link("View on GitHub", destination: url)
+                    Link("在 GitHub 上查看", destination: url)
                         .font(.caption)
                 }
             }
@@ -60,10 +60,10 @@ struct AboutView: View {
                     HStack(spacing: 6) {
                         ProgressView()
                             .controlSize(.small)
-                        Text("Checking...")
+                        Text("检查中…")
                     }
                 } else {
-                    Label("Check for Updates", systemImage: "arrow.clockwise")
+                    Label("检查更新", systemImage: "arrow.clockwise")
                 }
             }
             .disabled(updateChecker.isChecking)
@@ -80,26 +80,26 @@ struct AboutView: View {
         case .idle:
             EmptyView()
         case .checking:
-            Text("Checking for the latest release...")
+            Text("正在检查最新版本…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .updateAvailable(let update):
             VStack(spacing: 6) {
-                Text("Version \(update.version) is available.")
+                Text("发现新版本 \(update.version)。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 Link(destination: update.releaseURL) {
-                    Label("Open Release", systemImage: "arrow.up.forward.square")
+                    Label("打开发布页", systemImage: "arrow.up.forward.square")
                 }
                 .font(.caption)
             }
         case .upToDate:
-            Text("You're up to date.")
+            Text("已是最新版本。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .failed(let message):
-            Text("Update check failed: \(message)")
+            Text("检查更新失败：\(message)")
                 .font(.caption)
                 .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
