@@ -127,7 +127,10 @@ final class ThermalMonitor {
     }
 
     /// 取系统热压等级与温度判定等级中更严重者
-    static func resolvedPressure(systemPressure: ThermalPressure, temperaturePressure: ThermalPressure) -> ThermalPressure {
+    static func resolvedPressure(
+        systemPressure: ThermalPressure,
+        temperaturePressure: ThermalPressure
+    ) -> ThermalPressure {
         severity(of: temperaturePressure) > severity(of: systemPressure) ? temperaturePressure : systemPressure
     }
 
@@ -161,7 +164,10 @@ final class ThermalMonitor {
         temperaturePressure = Self.nextTemperaturePressure(previous: temperaturePressure, temperature: temperature)
 
         let systemPressure = ThermalPressureReader.shared.readPressure() ?? .unknown
-        let newPressure = Self.resolvedPressure(systemPressure: systemPressure, temperaturePressure: temperaturePressure)
+        let newPressure = Self.resolvedPressure(
+            systemPressure: systemPressure,
+            temperaturePressure: temperaturePressure
+        )
 
         if newPressure != previousPressure {
             // Check for throttling notifications
